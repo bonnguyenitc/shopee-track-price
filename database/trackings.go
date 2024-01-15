@@ -7,13 +7,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const TrackingCollectionName = "trackings"
 
 type Tracking struct {
 	ID        primitive.ObjectID `json:"_id" bson:"_id"`
-	IDShopee  float64            `json:"id_shopee,omitempty" bson:"id_shopee,omitempty"`
+	IDShopee  int64              `json:"id_shopee,omitempty" bson:"id_shopee,omitempty"`
 	UserID    primitive.ObjectID `json:"user_id,omitempty" bson:"user_id,omitempty"`
 	ShopeeUrl string             `json:"shopee_url,omitempty" bson:"shopee_url,omitempty"`
 	Status    bool               `json:"status,omitempty" bson:"status,omitempty"`
@@ -23,10 +24,11 @@ type Tracking struct {
 
 type TrackingRepository interface {
 	Insert(ctx context.Context, tracking Tracking) (any, error)
-	FindByIDShopee(ctx context.Context, id float64, user_id primitive.ObjectID) (Tracking, error)
+	FindByIDShopee(ctx context.Context, id int64, user_id primitive.ObjectID) (Tracking, error)
 	FindByUserID(ctx context.Context, id primitive.ObjectID) ([]Tracking, error)
 	Remove(ctx context.Context, id string) (bool, error)
 	Update(ctx context.Context, id string, tracking Tracking) (Tracking, error)
+	FindAll(ctx context.Context, limit int64, page int64) (DataWithPagination[Tracking], error)
 }
 
 type MongoTrackingRepository struct {
@@ -52,7 +54,7 @@ func (r *MongoTrackingRepository) Insert(ctx context.Context, tracking Tracking)
 	return result.InsertedID, nil
 }
 
-func (r *MongoTrackingRepository) FindByIDShopee(ctx context.Context, id float64, user_id primitive.ObjectID) (Tracking, error) {
+func (r *MongoTrackingRepository) FindByIDShopee(ctx context.Context, id int64, user_id primitive.ObjectID) (Tracking, error) {
 	var tracking Tracking
 	err := r.collection.FindOne(ctx, bson.M{"id_shopee": id, "user_id": user_id}).Decode(&tracking)
 	if err != nil {
@@ -103,6 +105,34 @@ func (r *MongoTrackingRepository) Update(ctx context.Context, id string, trackin
 	return tracking, nil
 }
 
+func (r *MongoTrackingRepository) FindAll(ctx context.Context, limit int64, page int64) (DataWithPagination[Tracking], error) {
+	var trackings []Tracking
+	skip := (page - 1) * limit
+
+	total, err := r.collection.CountDocuments(ctx, bson.D{{}})
+	if err != nil {
+		return DataWithPagination[Tracking]{}, err
+	}
+
+	cursor, err := r.collection.Find(ctx, bson.M{}, &options.FindOptions{
+		Limit: &limit,
+		Skip:  &skip,
+	})
+	if err != nil {
+		return DataWithPagination[Tracking]{}, err
+	}
+	if err = cursor.All(ctx, &trackings); err != nil {
+		return DataWithPagination[Tracking]{}, err
+	}
+	return DataWithPagination[Tracking]{
+		Data:        trackings,
+		TotalItems:  int(total),
+		TotalPages:  int(total/limit) + 1,
+		CurrentPage: int(page),
+		Limit:       int(limit),
+	}, nil
+}
+
 type TrackingService struct {
 	repository TrackingRepository
 }
@@ -115,7 +145,7 @@ func (s *TrackingService) Insert(ctx context.Context, tracking Tracking) (any, e
 	return s.repository.Insert(ctx, tracking)
 }
 
-func (s *TrackingService) FindByIDShopee(ctx context.Context, id float64, user_id primitive.ObjectID) (Tracking, error) {
+func (s *TrackingService) FindByIDShopee(ctx context.Context, id int64, user_id primitive.ObjectID) (Tracking, error) {
 	return s.repository.FindByIDShopee(ctx, id, user_id)
 }
 
@@ -129,4 +159,8 @@ func (s *TrackingService) Remove(ctx context.Context, id string) (bool, error) {
 
 func (s *TrackingService) Update(ctx context.Context, id string, tracking Tracking) (Tracking, error) {
 	return s.repository.Update(ctx, id, tracking)
+}
+
+func (s *TrackingService) FindAll(ctx context.Context, limit int64, page int64) (DataWithPagination[Tracking], error) {
+	return s.repository.FindAll(ctx, limit, page)
 }

@@ -13,7 +13,7 @@ const ShopCollectionName = "shops"
 
 type Shop struct {
 	ID         primitive.ObjectID `json:"_id" bson:"_id"`
-	ShopID     float64            `json:"shop_id,omitempty" bson:"shop_id,omitempty"`
+	ShopID     int64              `json:"shop_id,omitempty" bson:"shop_id,omitempty"`
 	Name       string             `json:"name,omitempty" bson:"name,omitempty"`
 	ShopRating float64            `json:"shop_rating,omitempty" bson:"shop_rating,omitempty"`
 	CreatedAt  time.Time          `bson:"created_at,omitempty"`

@@ -24,7 +24,7 @@ func crawlShop() {
 	}
 	for _, shop := range shops {
 		shopId := shop.ShopID
-		idString := strconv.FormatFloat(shopId, 'f', 0, 64)
+		idString := strconv.FormatInt(shopId, 10)
 		products, err := crawl.GetProductsByShopID(idString)
 
 		if err != nil {
@@ -103,6 +103,18 @@ func crawlShop() {
 
 func notifyPriceChangeJob() {
 	// get all tracking
+	trackingService := database.NewTrackingService(database.NewMongoTrackingRepository(database.MongoDB.Collection(database.TrackingCollectionName)))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	trackings, err := trackingService.FindAll(ctx, 10, 1)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(trackings)
+
 	// get all price
 	// compare price
 	// send email
@@ -112,6 +124,7 @@ func RunCronJobs() {
 	go func() {
 		for {
 			// crawlShop()
+			notifyPriceChangeJob()
 			<-time.After(10 * time.Minute)
 		}
 	}()

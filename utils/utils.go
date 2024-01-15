@@ -83,6 +83,10 @@ func SendVerificationEmail(email, token string) error {
 		os.Getenv("HOST_MAIL"), []string{email}, []byte(msg))
 }
 
-func ConvertFloat64ToInt(value float64) int {
-	return int(value)
+func ConvertFloat64ToInt(value float64) int64 {
+	return int64(value)
+}
+
+func ConvertFloat64ToInt32(value float64) int32 {
+	return int32(value)
 }

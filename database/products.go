@@ -13,23 +13,23 @@ const ProductCollectionName = "products"
 
 type Product struct {
 	ID                     primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	IDShopee               float64            `json:"id_shopee,omitempty" bson:"id_shopee,omitempty"`
+	IDShopee               int64              `json:"id_shopee,omitempty" bson:"id_shopee,omitempty"`
 	ShopName               string             `json:"shop_name,omitempty" bson:"shop_name,omitempty"`
 	ShopRating             float64            `json:"shop_rating,omitempty" bson:"shop_rating,omitempty"`
 	Name                   string             `json:"name,omitempty" bson:"name,omitempty"`
 	ShopID                 primitive.ObjectID `json:"shop_id,omitempty" bson:"shop_id,omitempty"`
-	Stock                  float64            `json:"stock,omitempty" bson:"stock,omitempty"`
-	Sold                   float64            `json:"sold,omitempty" bson:"sold,omitempty"`
-	HistoricalSold         float64            `json:"historical_sold,omitempty" bson:"historical_sold,omitempty"`
-	LikedCount             float64            `json:"liked_count,omitempty" bson:"liked_count,omitempty"`
-	CmtCount               float64            `json:"cmt_count,omitempty" bson:"cmt_count,omitempty"`
-	Price                  float64            `json:"price,omitempty" bson:"price,omitempty"`
-	PriceMin               float64            `json:"price_min,omitempty" bson:"price_min,omitempty"`
-	PriceMax               float64            `json:"price_max,omitempty" bson:"price_max,omitempty"`
-	PriceMinBeforeDiscount float64            `json:"price_min_before_discount,omitempty" bson:"price_min_before_discount,omitempty"`
-	PriceMaxBeforeDiscount float64            `json:"price_max_before_discount,omitempty" bson:"price_max_before_discount,omitempty"`
-	PriceBeforeDiscount    float64            `json:"price_before_discount,omitempty" bson:"price_before_discount,omitempty"`
-	RawDiscount            float64            `json:"raw_discount,omitempty" bson:"raw_discount,omitempty"`
+	Stock                  int32              `json:"stock,omitempty" bson:"stock,omitempty"`
+	Sold                   int32              `json:"sold,omitempty" bson:"sold,omitempty"`
+	HistoricalSold         int32              `json:"historical_sold,omitempty" bson:"historical_sold,omitempty"`
+	LikedCount             int32              `json:"liked_count,omitempty" bson:"liked_count,omitempty"`
+	CmtCount               int32              `json:"cmt_count,omitempty" bson:"cmt_count,omitempty"`
+	Price                  int64              `json:"price,omitempty" bson:"price,omitempty"`
+	PriceMin               int64              `json:"price_min,omitempty" bson:"price_min,omitempty"`
+	PriceMax               int64              `json:"price_max,omitempty" bson:"price_max,omitempty"`
+	PriceMinBeforeDiscount int64              `json:"price_min_before_discount,omitempty" bson:"price_min_before_discount,omitempty"`
+	PriceMaxBeforeDiscount int64              `json:"price_max_before_discount,omitempty" bson:"price_max_before_discount,omitempty"`
+	PriceBeforeDiscount    int64              `json:"price_before_discount,omitempty" bson:"price_before_discount,omitempty"`
+	RawDiscount            float32            `json:"raw_discount,omitempty" bson:"raw_discount,omitempty"`
 	Images                 []string           `json:"images,omitempty" bson:"images,omitempty"`
 	CreatedAt              time.Time          `bson:"created_at,omitempty"`
 	UpdatedAt              time.Time          `bson:"updated_at,omitempty"`
@@ -38,7 +38,7 @@ type Product struct {
 type ProductRepository interface {
 	Insert(ctx context.Context, product Product) (any, error)
 	FindAll(ctx context.Context) ([]Product, error)
-	FindByIdShopee(ctx context.Context, id float64) (Product, error)
+	FindByIdShopee(ctx context.Context, id int64) (Product, error)
 	FindByName(ctx context.Context, name string) ([]Product, error)
 	Remove(ctx context.Context, id primitive.ObjectID) (bool, error)
 	Update(ctx context.Context, id string, product Product) (Product, error)
@@ -83,7 +83,7 @@ func (r *MongoProductRepository) FindAll(ctx context.Context) ([]Product, error)
 	}
 }
 
-func (r *MongoProductRepository) FindByIdShopee(ctx context.Context, id float64) (Product, error) {
+func (r *MongoProductRepository) FindByIdShopee(ctx context.Context, id int64) (Product, error) {
 	var result Product
 	err := r.collection.FindOne(ctx, bson.M{
 		"id_shopee": id,
@@ -155,7 +155,7 @@ func (s *ProductService) FindAll(ctx context.Context) ([]Product, error) {
 	return s.repo.FindAll(ctx)
 }
 
-func (s *ProductService) FindByIdShopee(ctx context.Context, id float64) (Product, error) {
+func (s *ProductService) FindByIdShopee(ctx context.Context, id int64) (Product, error) {
 	return s.repo.FindByIdShopee(ctx, id)
 }
 

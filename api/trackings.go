@@ -37,7 +37,7 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	url := payload.Url
 	// check item exist in database
-	productId, err := strconv.ParseFloat(utils.GetProductIDFromUrl(url), 64)
+	productId, err := strconv.ParseInt(utils.GetProductIDFromUrl(url), 10, 64)
 
 	if productId == 0 || err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -72,7 +72,7 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 			shopService := database.NewShopService(database.NewMongoShopRepository(database.MongoDB.Collection(database.ShopCollectionName)))
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			shopId, _ := strconv.ParseFloat(shopId, 64)
+			shopId, _ := strconv.ParseInt(shopId, 10, 64)
 			shopDB, err := shopService.FindByShopShopeeId(ctx, float64(shopId))
 			if err != nil {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
