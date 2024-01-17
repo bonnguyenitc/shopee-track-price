@@ -10,6 +10,7 @@ import (
 
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/crawl"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
+	"github.com/bonnguyenitc/shopee-stracks/back-end-go/templates"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -148,10 +149,12 @@ func notifyPriceChangeJob() {
 			// for less than
 			ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			conditions, err := conditionService.FindAllByFilter(ctx, bson.M{
+			conditions, err := conditionService.FindAllByFilterWithUser(ctx, bson.M{
 				"tracking":  bson.D{{Key: "$ref", Value: database.TrackingCollectionName}, {Key: "$id", Value: tracking.ID}},
 				"condition": database.LESS_THAN,
+				"active":    true,
 			})
+
 			if err != nil {
 				wg.Done()
 				return
@@ -160,8 +163,18 @@ func notifyPriceChangeJob() {
 			previousPrice := prices[1]
 			// check condition for less than
 			if latestPrice.Price > previousPrice.Price {
-				log.Println("conditions for less then", conditions)
 				// send email to user if price less than condition
+				for _, condition := range conditions {
+					email := condition.UserInfo[0].Email
+					url := condition.TrackingInfo[0].ShopeeUrl
+					log.Println(templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
+						Email:         email,
+						Price:         latestPrice.Price,
+						PricePrevious: previousPrice.Price,
+						Title:         "Notify price",
+						LinkProduct:   url,
+					}))
+				}
 			}
 			wg.Done()
 		}()
@@ -174,6 +187,7 @@ func notifyPriceChangeJob() {
 			conditions, err := conditionService.FindAllByFilter(ctx, bson.M{
 				"tracking":  bson.D{{Key: "$ref", Value: database.TrackingCollectionName}, {Key: "$id", Value: tracking.ID}},
 				"condition": database.GREATER_THAN,
+				"active":    true,
 			})
 			if err != nil {
 				wg.Done()
@@ -183,8 +197,18 @@ func notifyPriceChangeJob() {
 			previousPrice := prices[1]
 			// check condition for greater than
 			if latestPrice.Price > previousPrice.Price {
-				log.Println("conditions for greater then", conditions)
 				// send email to user if price greater than condition
+				for _, condition := range conditions {
+					email := condition.UserInfo[0].Email
+					url := condition.TrackingInfo[0].ShopeeUrl
+					log.Println(templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
+						Email:         email,
+						Price:         latestPrice.Price,
+						PricePrevious: previousPrice.Price,
+						Title:         "Notify price",
+						LinkProduct:   url,
+					}))
+				}
 			}
 			wg.Done()
 		}()
@@ -197,6 +221,7 @@ func notifyPriceChangeJob() {
 			conditions, err := conditionService.FindAllByFilter(ctx, bson.M{
 				"tracking":  bson.D{{Key: "$ref", Value: database.TrackingCollectionName}, {Key: "$id", Value: tracking.ID}},
 				"condition": database.EQUAL,
+				"active":    true,
 			})
 			if err != nil {
 				wg.Done()
@@ -206,8 +231,16 @@ func notifyPriceChangeJob() {
 			// check condition for equal
 			for _, condition := range conditions {
 				if latestPrice.Price <= condition.Price {
-					log.Println("conditions for equal", condition)
 					// send email to user if price equal condition
+					email := condition.UserInfo[0].Email
+					url := condition.TrackingInfo[0].ShopeeUrl
+					log.Println(templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
+						Email:         email,
+						Price:         latestPrice.Price,
+						PricePrevious: latestPrice.Price,
+						Title:         "Notify price",
+						LinkProduct:   url,
+					}))
 				}
 			}
 			wg.Done()

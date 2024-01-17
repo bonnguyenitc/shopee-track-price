@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
+	"github.com/bonnguyenitc/shopee-stracks/back-end-go/templates"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
@@ -93,7 +94,12 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 				ExpiredAt: time.Now().Add(6 * time.Hour),
 				UserId:    newUser.(primitive.ObjectID),
 			})
-			log.Println(utils.SendVerificationEmail(payload.Email, token))
+
+			log.Println(utils.SendEmail(payload.Email, templates.CreateEmailSendTokenVerifyUserTemplate(templates.InfoEmailSendTokenVerifyUser{
+				Email: payload.Email,
+				Token: token,
+				Title: "Verify your email",
+			})))
 		}
 
 		json.NewEncoder(w).Encode(ResponseApi{
@@ -246,7 +252,7 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SetupUsersApiRoutes(router *mux.Router) {
-	router.HandleFunc("/api/users", createUserHandler).Methods("POST")
+	router.HandleFunc("/api/register", createUserHandler).Methods("POST")
 	router.HandleFunc("/api/login", loginHandler).Methods("POST")
 	router.HandleFunc("/api/verify", verifyEmailHandler).Methods("GET")
 }

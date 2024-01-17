@@ -65,22 +65,15 @@ func GenerateTokenVerifyEmail() (string, error) {
 	return base64.StdEncoding.EncodeToString(b), nil
 }
 
-func SendVerificationEmail(email, token string) error {
+func SendEmail(email, content string) error {
 	smtpServer := os.Getenv("SMTP_SERVER")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUser := os.Getenv("UR_MAIL")
 	smtpPass := os.Getenv("PW_MAIL")
 
-	hostMail := os.Getenv("HOST_MAIL")
-
-	msg := "From: " + hostMail + "\n" +
-		"To: " + email + "\n" +
-		"Subject: Email Verification\n\n" +
-		"Click on the following link to verify your email address: https://shopeetrackings.app/verify?token=" + token
-
 	return smtp.SendMail(smtpServer+":"+smtpPort,
 		smtp.PlainAuth("", smtpUser, smtpPass, smtpServer),
-		os.Getenv("HOST_MAIL"), []string{email}, []byte(msg))
+		os.Getenv("HOST_MAIL"), []string{email}, []byte(content))
 }
 
 func ConvertFloat64ToInt64(value float64) int64 {
