@@ -24,7 +24,7 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 	defer cancel()
 
 	// create a timeout
-	ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	// navigate to a page, retrieve the page source
@@ -76,7 +76,7 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 			itemReal := item.(map[string]interface{})
 			images := itemReal["images"].([]interface{})
 			products = append(products, database.Product{
-				IDShopee:               utils.ConvertFloat64ToInt(itemReal["itemid"].(float64)),
+				IDShopee:               utils.ConvertFloat64ToInt64(itemReal["itemid"].(float64)),
 				ShopName:               itemReal["shop_name"].(string),
 				ShopRating:             itemReal["shop_rating"].(float64),
 				Name:                   itemReal["name"].(string),
@@ -85,12 +85,12 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 				HistoricalSold:         utils.ConvertFloat64ToInt32(itemReal["historical_sold"].(float64)),
 				LikedCount:             utils.ConvertFloat64ToInt32(itemReal["liked_count"].(float64)),
 				CmtCount:               utils.ConvertFloat64ToInt32(itemReal["cmt_count"].(float64)),
-				Price:                  utils.ConvertFloat64ToInt(itemReal["price"].(float64)),
-				PriceMin:               utils.ConvertFloat64ToInt(itemReal["price_min"].(float64)),
-				PriceMax:               utils.ConvertFloat64ToInt(itemReal["price_max"].(float64)),
-				PriceMinBeforeDiscount: utils.ConvertFloat64ToInt(itemReal["price_min_before_discount"].(float64)),
-				PriceMaxBeforeDiscount: utils.ConvertFloat64ToInt(itemReal["price_max_before_discount"].(float64)),
-				PriceBeforeDiscount:    utils.ConvertFloat64ToInt(itemReal["price_before_discount"].(float64)),
+				Price:                  utils.ConvertFloat64ToInt64(itemReal["price"].(float64)),
+				PriceMin:               utils.ConvertFloat64ToInt64(itemReal["price_min"].(float64)),
+				PriceMax:               utils.ConvertFloat64ToInt64(itemReal["price_max"].(float64)),
+				PriceMinBeforeDiscount: utils.ConvertFloat64ToInt64(itemReal["price_min_before_discount"].(float64)),
+				PriceMaxBeforeDiscount: utils.ConvertFloat64ToInt64(itemReal["price_max_before_discount"].(float64)),
+				PriceBeforeDiscount:    utils.ConvertFloat64ToInt64(itemReal["price_before_discount"].(float64)),
 				RawDiscount:            float32(itemReal["raw_discount"].(float64)),
 				Images:                 utils.CreateListImageFromIds(images),
 			})

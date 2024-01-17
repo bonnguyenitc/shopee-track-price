@@ -18,6 +18,7 @@ type Product struct {
 	ShopRating             float64            `json:"shop_rating,omitempty" bson:"shop_rating,omitempty"`
 	Name                   string             `json:"name,omitempty" bson:"name,omitempty"`
 	ShopID                 primitive.ObjectID `json:"shop_id,omitempty" bson:"shop_id,omitempty"`
+	Shop                   bson.D             `json:"shop,omitempty" bson:"shop,omitempty"`
 	Stock                  int32              `json:"stock,omitempty" bson:"stock,omitempty"`
 	Sold                   int32              `json:"sold,omitempty" bson:"sold,omitempty"`
 	HistoricalSold         int32              `json:"historical_sold,omitempty" bson:"historical_sold,omitempty"`
@@ -54,9 +55,12 @@ func NewMongoProductRepository(collection *mongo.Collection) *MongoProductReposi
 
 func (r *MongoProductRepository) Insert(ctx context.Context, product Product) (any, error) {
 	result, err := r.collection.InsertOne(ctx, bson.M{
-		"id_shopee":  product.IDShopee,
-		"name":       product.Name,
-		"shop_id":    product.ShopID,
+		"id_shopee": product.IDShopee,
+		"name":      product.Name,
+		"shop": bson.D{
+			{Key: "$ref", Value: ShopCollectionName},
+			{Key: "$id", Value: product.ShopID},
+		},
 		"images":     product.Images,
 		"created_at": time.Now(),
 		"updated_at": time.Now(),

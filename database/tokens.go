@@ -19,6 +19,7 @@ type Token struct {
 	Token     string             `json:"token,omitempty" bson:"token,omitempty"`
 	Type      string             `json:"type,omitempty" bson:"type,omitempty"`
 	UserId    primitive.ObjectID `json:"user_id,omitempty" bson:"user_id,omitempty"`
+	User      bson.D             `json:"user,omitempty" bson:"user,omitempty"`
 	ExpiredAt time.Time          `json:"expired_at,omitempty" bson:"expired_at,omitempty"`
 	CreatedAt time.Time          `json:"created_at,omitempty" bson:"created_at,omitempty"`
 }
@@ -39,10 +40,13 @@ func NewMongoTokenRepository(collection *mongo.Collection) *MongoTokenRepository
 
 func (r *MongoTokenRepository) Insert(ctx context.Context, token Token) (Token, error) {
 	_, err := r.collection.InsertOne(ctx, bson.M{
-		"token":      token.Token,
+		"token": token.Token,
+		"user": bson.D{
+			{Key: "$ref", Value: UserCollectionName},
+			{Key: "$id", Value: token.UserId},
+		},
 		"type":       token.Type,
 		"expired_at": token.ExpiredAt,
-		"user_id":    token.UserId,
 		"created_at": time.Now(),
 	})
 	if err != nil {

@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/crawl"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
+	"github.com/bonnguyenitc/shopee-stracks/back-end-go/utils"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func crawlShop() {
@@ -53,8 +56,8 @@ func crawlShop() {
 
 			//
 			p, err := priceService.FindOneByFilter(ctx, bson.M{
-				"product_id": prod.ID,
-				"created_at": bson.M{"$gte": startOfDay, "$lt": endOfDay},
+				"product.$id": prod.ID,
+				"created_at":  bson.M{"$gte": startOfDay, "$lt": endOfDay},
 			})
 
 			if err != nil {
@@ -106,24 +109,119 @@ func notifyPriceChangeJob() {
 	trackingService := database.NewTrackingService(database.NewMongoTrackingRepository(database.MongoDB.Collection(database.TrackingCollectionName)))
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	trackings, err := trackingService.FindAll(ctx, 10, 1)
+	trackings, err := trackingService.FindAll(ctx, 20, 1)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
-	fmt.Println(trackings)
+	trackingsPassed := utils.Filter[database.Tracking](trackings.Data, func(tracking database.Tracking) bool {
+		return tracking.Status
+	})
 
-	// get all price
-	// compare price
-	// send email
+	for _, tracking := range trackingsPassed {
+		// get all price
+		priceService := database.NewPriceService(database.NewMongoPriceRepository(database.MongoDB.Collection(database.PriceCollectionName)))
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		productID := tracking.Product.Map()["$id"].(primitive.ObjectID)
+		prices, err := priceService.FindByProductID(ctx, productID)
+
+		if err != nil {
+			continue
+		}
+
+		if len(prices) <= 1 {
+			continue
+		}
+
+		// compare price
+		// get all condition per condition
+		conditionService := database.NewTrackingConditionService(database.NewMongoTrackingConditionRepository(database.MongoDB.Collection(database.TrackingConditionCollectionName)))
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			// for less than
+			ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			conditions, err := conditionService.FindAllByFilter(ctx, bson.M{
+				"tracking":  bson.D{{Key: "$ref", Value: database.TrackingCollectionName}, {Key: "$id", Value: tracking.ID}},
+				"condition": database.LESS_THAN,
+			})
+			if err != nil {
+				wg.Done()
+				return
+			}
+			latestPrice := prices[0]
+			previousPrice := prices[1]
+			// check condition for less than
+			if latestPrice.Price > previousPrice.Price {
+				log.Println("conditions for less then", conditions)
+				// send email to user if price less than condition
+			}
+			wg.Done()
+		}()
+
+		wg.Add(1)
+		go func() {
+			// for greater than
+			ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			conditions, err := conditionService.FindAllByFilter(ctx, bson.M{
+				"tracking":  bson.D{{Key: "$ref", Value: database.TrackingCollectionName}, {Key: "$id", Value: tracking.ID}},
+				"condition": database.GREATER_THAN,
+			})
+			if err != nil {
+				wg.Done()
+				return
+			}
+			latestPrice := prices[0]
+			previousPrice := prices[1]
+			// check condition for greater than
+			if latestPrice.Price > previousPrice.Price {
+				log.Println("conditions for greater then", conditions)
+				// send email to user if price greater than condition
+			}
+			wg.Done()
+		}()
+
+		wg.Add(1)
+		go func() {
+			// for equal
+			ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			conditions, err := conditionService.FindAllByFilter(ctx, bson.M{
+				"tracking":  bson.D{{Key: "$ref", Value: database.TrackingCollectionName}, {Key: "$id", Value: tracking.ID}},
+				"condition": database.EQUAL,
+			})
+			if err != nil {
+				wg.Done()
+				return
+			}
+			latestPrice := prices[0]
+			// check condition for equal
+			for _, condition := range conditions {
+				if latestPrice.Price <= condition.Price {
+					log.Println("conditions for equal", condition)
+					// send email to user if price equal condition
+				}
+			}
+			wg.Done()
+		}()
+		// wait for all goroutine done
+		wg.Wait()
+		// END
+	}
 }
 
 func RunCronJobs() {
 	go func() {
 		for {
-			// crawlShop()
+			crawlShop()
 			notifyPriceChangeJob()
 			<-time.After(10 * time.Minute)
 		}

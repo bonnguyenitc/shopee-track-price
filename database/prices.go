@@ -14,6 +14,7 @@ const PriceCollectionName = "prices"
 type Price struct {
 	ID                     primitive.ObjectID `json:"_id" bson:"_id"`
 	ProductID              primitive.ObjectID `json:"product_id,omitempty" bson:"product_id,omitempty"`
+	Product                bson.D             `json:"product,omitempty" bson:"product,omitempty"`
 	Stock                  int32              `json:"stock,omitempty" bson:"stock,omitempty"`
 	Sold                   int32              `json:"sold,omitempty" bson:"sold,omitempty"`
 	HistoricalSold         int32              `json:"historical_sold,omitempty" bson:"historical_sold,omitempty"`
@@ -47,7 +48,10 @@ func NewMongoPriceRepository(collection *mongo.Collection) *MongoPriceRepository
 
 func (r *MongoPriceRepository) Insert(ctx context.Context, price Price) (Price, error) {
 	_, err := r.collection.InsertOne(ctx, bson.M{
-		"product_id":                price.ProductID,
+		"product": bson.D{
+			{Key: "$ref", Value: UserCollectionName},
+			{Key: "$id", Value: price.ProductID},
+		},
 		"stock":                     price.Stock,
 		"sold":                      price.Sold,
 		"historical_sold":           price.HistoricalSold,
@@ -101,7 +105,7 @@ func (r *MongoPriceRepository) Update(ctx context.Context, id string, price Pric
 
 func (r *MongoPriceRepository) FindByProductID(ctx context.Context, productID primitive.ObjectID) ([]Price, error) {
 	var prices []Price
-	cursor, err := r.collection.Find(ctx, bson.M{"product_id": productID})
+	cursor, err := r.collection.Find(ctx, bson.M{"product.$id": productID})
 	if err != nil {
 		return nil, err
 	}

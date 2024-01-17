@@ -207,6 +207,8 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := tokenObj.User.Map()["$id"].(primitive.ObjectID).Hex()
+
 	// check token expired
 	if tokenObj.ExpiredAt.Before(time.Now()) {
 		http.Error(w, "Token expired", http.StatusBadRequest)
@@ -218,7 +220,7 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	userService := database.NewUserService(mongoUserRepo)
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	err = userService.Update(ctx, tokenObj.UserId.Hex(), bson.M{
+	err = userService.Update(ctx, userID, bson.M{
 		"verified": true,
 	})
 

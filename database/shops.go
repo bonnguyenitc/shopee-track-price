@@ -24,7 +24,7 @@ type ShopRepository interface {
 	Insert(ctx context.Context, shop Shop) (Shop, error)
 	FindAll(ctx context.Context) ([]Shop, error)
 	FindById(ctx context.Context, id string) (Shop, error)
-	FindByShopShopeeId(ctx context.Context, id float64) (Shop, error)
+	FindByShopShopeeId(ctx context.Context, id int64) (Shop, error)
 	FindByName(ctx context.Context, name string) (Shop, error)
 	Remove(ctx context.Context, id string) (bool, error)
 	Update(ctx context.Context, id string, shop Shop) (Shop, error)
@@ -105,7 +105,7 @@ func (r *MongoShopRepository) Update(ctx context.Context, id string, shop Shop) 
 	return shop, nil
 }
 
-func (r *MongoShopRepository) FindByShopShopeeId(ctx context.Context, id float64) (Shop, error) {
+func (r *MongoShopRepository) FindByShopShopeeId(ctx context.Context, id int64) (Shop, error) {
 	var shop Shop
 	err := r.collection.FindOne(ctx, bson.M{"shop_id": id}).Decode(&shop)
 	if err != nil {
@@ -130,6 +130,6 @@ func (s *ShopService) FindAll(ctx context.Context) ([]Shop, error) {
 	return s.repo.FindAll(ctx)
 }
 
-func (s *ShopService) FindByShopShopeeId(ctx context.Context, id float64) (Shop, error) {
+func (s *ShopService) FindByShopShopeeId(ctx context.Context, id int64) (Shop, error) {
 	return s.repo.FindByShopShopeeId(ctx, id)
 }
