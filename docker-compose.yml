@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - '8000:8000'
+    volumes:
+      - .:/usr/src/backend-app
+    command: air ./cmd/main.go -b 0.0.0.0
+  mongodb:
+    image: mongo:latest
+    container_name: dev-mongodb
+    environment:
+      - MONGO_INITDB_DATABASE=${DB_NAME}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGODB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD}
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb:/var/lib/mongodb/data
+      - mongoconfig:/var/lib/mongodb/configdb
+
+volumes:
+  # default dir on Ubuntu: /var/lib/docker/volumes
+  mongodb:
+  mongoconfig:
