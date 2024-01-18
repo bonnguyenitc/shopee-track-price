@@ -3,6 +3,8 @@ version: '3.8'
 services:
   api:
     build: .
+    networks:
+      - backend-network
     env_file:
       - .env
     ports:
@@ -10,8 +12,14 @@ services:
     volumes:
       - .:/usr/src/backend-app
     command: air ./cmd/main.go -b 0.0.0.0
+  headless-shell:
+    image: chromedp/headless-shell:latest
+    networks:
+      - backend-network
   mongodb:
     image: mongo:latest
+    networks:
+      - backend-network
     container_name: dev-mongodb
     environment:
       - MONGO_INITDB_DATABASE=${DB_NAME}
@@ -27,3 +35,6 @@ volumes:
   # default dir on Ubuntu: /var/lib/docker/volumes
   mongodb:
   mongoconfig:
+
+networks:
+  backend-network:

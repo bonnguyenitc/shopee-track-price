@@ -16,15 +16,14 @@ import (
 
 func GetProductsByShopID(shopID string) ([]database.Product, error) {
 	var url = fmt.Sprintf("https://shopee.vn/api/v4/recommend/recommend?bundle=shop_page_product_tab_main&limit=999&offset=0&section=shop_page_product_tab_main_sec&shopid=%s", shopID)
-	// create a new Chrome browser context
-	ctx, cancel := chromedp.NewContext(
-		context.Background(),
-		chromedp.WithLogf(log.Printf),
-	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// create a timeout
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	allocCtx, cancel := chromedp.NewRemoteAllocator(ctx, "http://headless-shell:9222")
+	defer cancel()
+
+	ctx, cancel = chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
 	defer cancel()
 
 	// navigate to a page, retrieve the page source
