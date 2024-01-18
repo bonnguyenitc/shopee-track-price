@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -106,9 +107,9 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 			})
 
 			log.Println(utils.SendEmail(payload.Email, templates.CreateEmailSendTokenVerifyUserTemplate(templates.InfoEmailSendTokenVerifyUser{
-				Email: payload.Email,
-				Token: token,
-				Title: "Verify your email",
+				Email:    payload.Email,
+				UrlToken: fmt.Sprintf("%s/verify-email?token=%s", os.Getenv("BASE_URL"), token),
+				Title:    "Verify your email",
 			})))
 		}
 

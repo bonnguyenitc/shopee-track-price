@@ -7,9 +7,9 @@ import (
 )
 
 type InfoEmailSendTokenVerifyUser struct {
-	Title string
-	Email string
-	Token string
+	Title    string
+	Email    string
+	UrlToken string
 }
 
 const TEMPLATE_EMAIL_SEND_TOKEN_VERIFY_USER = `
@@ -20,7 +20,7 @@ const TEMPLATE_EMAIL_SEND_TOKEN_VERIFY_USER = `
 </head>
 <body>
 	<p>Hi {{.Email}},</p>
-	<p>Click <a href="http://localhost:3000/verify?token={{.Token}}">here</a> to verify your account.</p>
+	<p>Click <a href="{{.UrlToken}}">here</a> to verify your account.</p>
 	<p>Token will be expired in 6 hours.</p>
 	<p>If you did not request this, please ignore this email.</p>
 	<p>Thanks,</p>
