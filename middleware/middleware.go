@@ -2,11 +2,13 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/bonnguyenitc/shopee-stracks/back-end-go/common"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -31,12 +33,14 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		})
 
 		if err != nil {
-			http.Error(w, "Token invalid", http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusUnauthorized, common.UnauthorizedCode, common.UnauthorizedMsg))
 			return
 		}
 
 		if !tkn.Valid {
-			http.Error(w, "Token invalid", http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusUnauthorized, common.UnauthorizedCode, common.UnauthorizedMsg))
 			return
 		}
 
@@ -50,12 +54,14 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		user, err := userService.FindById(ctx, userID)
 
 		if err != nil {
-			http.Error(w, "User not exist", http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusUnauthorized, common.UnauthorizedCode, common.UnauthorizedMsg))
 			return
 		}
 
 		if !user.Verified {
-			http.Error(w, "User not verified", http.StatusUnauthorized)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.EmailNotVerifiedCode, common.EmailNotVerifiedMsg))
 			return
 		}
 

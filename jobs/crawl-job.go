@@ -17,7 +17,6 @@ import (
 )
 
 func crawlShop() {
-	log.Println("Crawl data shop start...")
 	// get all shop
 	shopService := database.NewShopService(database.NewMongoShopRepository(database.MongoDB.Collection(database.ShopCollectionName)))
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -162,18 +161,18 @@ func notifyPriceChangeJob() {
 			latestPrice := prices[0]
 			previousPrice := prices[1]
 			// check condition for less than
-			if latestPrice.Price > previousPrice.Price {
+			if latestPrice.Price < previousPrice.Price {
 				// send email to user if price less than condition
 				for _, condition := range conditions {
 					email := condition.UserInfo[0].Email
 					url := condition.TrackingInfo[0].ShopeeUrl
-					log.Println(templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
+					log.Println(utils.SendEmail(email, templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
 						Email:         email,
 						Price:         latestPrice.Price,
 						PricePrevious: previousPrice.Price,
 						Title:         "Notify price",
 						LinkProduct:   url,
-					}))
+					})))
 				}
 			}
 			wg.Done()
@@ -201,13 +200,13 @@ func notifyPriceChangeJob() {
 				for _, condition := range conditions {
 					email := condition.UserInfo[0].Email
 					url := condition.TrackingInfo[0].ShopeeUrl
-					log.Println(templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
+					log.Println(utils.SendEmail(email, templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
 						Email:         email,
 						Price:         latestPrice.Price,
 						PricePrevious: previousPrice.Price,
 						Title:         "Notify price",
 						LinkProduct:   url,
-					}))
+					})))
 				}
 			}
 			wg.Done()
@@ -234,13 +233,13 @@ func notifyPriceChangeJob() {
 					// send email to user if price equal condition
 					email := condition.UserInfo[0].Email
 					url := condition.TrackingInfo[0].ShopeeUrl
-					log.Println(templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
+					log.Println(utils.SendEmail(email, templates.CreateEmailNotifyPriceTemplate(templates.InfoEmailNotifyPrice{
 						Email:         email,
 						Price:         latestPrice.Price,
 						PricePrevious: latestPrice.Price,
 						Title:         "Notify price",
 						LinkProduct:   url,
-					}))
+					})))
 				}
 			}
 			wg.Done()

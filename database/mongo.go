@@ -3,23 +3,25 @@ package database
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var MongoDBClient *mongo.Client
 var MongoDB *mongo.Database
 
 func NewMongoDB(dbName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-	client, err := mongo.Connect(ctx, clientOptions)
+	clientOptions := options.Client().ApplyURI(os.Getenv("MONGO_URI"))
+	MongoDBClient, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return err
 	}
-	MongoDB = client.Database(dbName)
+	MongoDB = MongoDBClient.Database(dbName)
 	return nil
 }
 

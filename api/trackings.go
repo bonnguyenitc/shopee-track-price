@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bonnguyenitc/shopee-stracks/back-end-go/common"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/crawl"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/middleware"
@@ -18,12 +19,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type ResponseApi struct {
-	Status   int            `json:"status"`
-	Message  string         `json:"message"`
-	Metadata map[string]any `json:"metadata"`
-}
-
 type TrackingRequest struct {
 	Url string `json:"url"`
 }
@@ -33,7 +28,8 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 	var payload TrackingRequest
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerMsg, common.InternalServerMsg))
 		return
 	}
 	url := payload.Url
@@ -41,7 +37,8 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 	productIdShopee, err := strconv.ParseInt(utils.GetProductIDFromUrl(url), 10, 64)
 
 	if productIdShopee == 0 || err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.ProductNotFoundCode, common.ProductNotFoundMessage))
 		return
 	}
 	// get product from database
@@ -58,12 +55,14 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		var shopId string = utils.GetShopIdFromString(url)
 		products, err := crawl.GetProductsByShopID(shopId)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerMsg, common.InternalServerMsg))
 			return
 		}
 
 		if len(products) == 0 {
-			http.Error(w, "Product not found!", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.ProductNotFoundCode, common.ProductNotFoundMessage))
 			return
 		}
 
@@ -76,15 +75,16 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 			shopId, _ := strconv.ParseInt(shopId, 10, 64)
 			shopDB, err := shopService.FindByShopShopeeId(ctx, shopId)
 			if err != nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
-				shopDB, err := shopService.Insert(ctx, database.Shop{
+				shopDB, err = shopService.Insert(ctx, database.Shop{
 					ShopID:     shopId,
 					Name:       products[0].ShopName,
 					ShopRating: products[0].ShopRating,
 				})
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerMsg, common.InternalServerMsg))
 					return
 				} else {
 					shopIdFromDB = shopDB.ID
@@ -104,7 +104,8 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !found {
-			http.Error(w, "Product not found!", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.ProductNotFoundCode, common.ProductNotFoundMessage))
 			return
 		}
 
@@ -124,7 +125,8 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		productExist, err = productService.FindByIdShopee(ctx, productIdShopee)
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.ProductNotFoundCode, common.ProductNotFoundMessage))
 			return
 		}
 
@@ -135,7 +137,8 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 	userIDObj, err := primitive.ObjectIDFromHex(userID)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerMsg, common.InternalServerMsg))
 		return
 	}
 
@@ -160,7 +163,8 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		trackingID, err := trackingService.Insert(ctx, pp)
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingFailCode, common.TrackingFailMessage))
 			return
 		}
 
@@ -177,11 +181,12 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			trackingService.Remove(ctx, trackingID.(primitive.ObjectID))
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingFailCode, common.TrackingFailMessage))
 			return
 		}
 
-		json.NewEncoder(w).Encode(ResponseApi{
+		json.NewEncoder(w).Encode(common.ResponseApi{
 			Status:  http.StatusOK,
 			Message: "Tracking success!",
 		})
@@ -198,13 +203,15 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingFailCode, common.TrackingFailMessage))
 			return
 		}
 	}
 
 	if !tracking.Status {
-		http.Error(w, "Product can not tracking now!", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingFailCode, common.TrackingFailMessage))
 		return
 	}
 
@@ -216,7 +223,8 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		tracking, err = trackingService.AddNewUserToTracking(ctx, tracking.ID, userIDObj)
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingFailCode, common.TrackingFailMessage))
 			return
 		}
 
@@ -233,19 +241,20 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			trackingService.UnTracking(ctx, tracking.ID, userIDObj)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingFailCode, common.TrackingFailMessage))
 			return
 		}
 
-		json.NewEncoder(w).Encode(ResponseApi{
+		json.NewEncoder(w).Encode(common.ResponseApi{
 			Status:  http.StatusOK,
-			Message: "Tracking success!",
+			Message: common.TrackingSuccessMessage,
 		})
 	}
 
 	if exist {
-		http.Error(w, "You are tracking this product!", http.StatusBadRequest)
-		return
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingExistCode, common.TrackingExistMessage))
 	}
 }
 
@@ -283,35 +292,40 @@ func unTrackingHandler(w http.ResponseWriter, r *http.Request) {
 	idObj, err := primitive.ObjectIDFromHex(id)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.UnTrackingFailCode, common.UnTrackingFailMsg))
 		return
 	}
 
 	tracking, err := trackingService.FindById(ctx, idObj)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.UnTrackingFailCode, common.UnTrackingFailMsg))
 		return
 	}
 
 	userIdObj, err := primitive.ObjectIDFromHex(userID)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.UnTrackingFailCode, common.UnTrackingFailMsg))
 		return
 	}
 
 	exist, _ := trackingService.CheckUserInTracking(ctx, tracking.ID, userIdObj)
 
 	if !exist {
-		http.Error(w, "You are not tracking this product!", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TrackingNotFoundCode, common.TrackingNotFoundMsg))
 		return
 	}
 
 	_, err = trackingService.UnTracking(ctx, tracking.ID, userIdObj)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.UnTrackingFailCode, common.UnTrackingFailMsg))
 		return
 	}
 
@@ -326,18 +340,21 @@ func unTrackingHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.UnTrackingFailCode, common.UnTrackingFailMsg))
 		return
 	}
 
 	if removed {
-		json.NewEncoder(w).Encode(ResponseApi{
+		json.NewEncoder(w).Encode(common.ResponseApi{
 			Status:  http.StatusOK,
-			Message: "Un-tracking success!",
+			Message: common.UnTrackingSuccessCode,
 		})
 		return
 	}
 
+	w.WriteHeader(http.StatusBadRequest)
+	json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.UnTrackingFailCode, common.UnTrackingFailMsg))
 }
 
 func SetupTrackingsApiRoutes(router *mux.Router) {

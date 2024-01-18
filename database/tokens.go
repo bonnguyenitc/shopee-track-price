@@ -26,7 +26,7 @@ type Token struct {
 
 type TokenRepository interface {
 	Insert(ctx context.Context, token Token) (Token, error)
-	FindOneByFilter(ctx context.Context, filter map[string]interface{}) (Token, error)
+	FindOneByFilter(ctx context.Context, filter bson.M) (Token, error)
 	Remove(ctx context.Context, filter bson.M) (bool, error)
 }
 
@@ -55,7 +55,7 @@ func (r *MongoTokenRepository) Insert(ctx context.Context, token Token) (Token, 
 	return token, nil
 }
 
-func (r *MongoTokenRepository) FindOneByFilter(ctx context.Context, filter map[string]interface{}) (Token, error) {
+func (r *MongoTokenRepository) FindOneByFilter(ctx context.Context, filter bson.M) (Token, error) {
 	var token Token
 	err := r.collection.FindOne(ctx, filter).Decode(&token)
 	if err != nil {
@@ -84,7 +84,7 @@ func (s *TokenService) Insert(ctx context.Context, token Token) (Token, error) {
 	return s.repo.Insert(ctx, token)
 }
 
-func (s *TokenService) FindOneByFilter(ctx context.Context, filter map[string]interface{}) (Token, error) {
+func (s *TokenService) FindOneByFilter(ctx context.Context, filter bson.M) (Token, error) {
 	return s.repo.FindOneByFilter(ctx, filter)
 }
 

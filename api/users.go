@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bonnguyenitc/shopee-stracks/back-end-go/common"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/templates"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/utils"
@@ -29,11 +30,16 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required,min=8"`
 }
 
+type VerifiedEmailRequest struct {
+	Token string `json:"token" validate:"required"`
+}
+
 func createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var payload UserRequest
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -41,7 +47,8 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 	validate := validator.New()
 	err = validate.Struct(payload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -55,14 +62,16 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 	user, _ := userService.FindByEmail(ctx, payload.Email)
 
 	if user.Email != "" {
-		http.Error(w, "Email already exist", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.EmailExistCode, common.EmailExistMsg))
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -74,7 +83,8 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -102,14 +112,15 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 			})))
 		}
 
-		json.NewEncoder(w).Encode(ResponseApi{
+		json.NewEncoder(w).Encode(common.ResponseApi{
 			Status:  http.StatusOK,
 			Message: "Create new user success!",
 		})
 		return
 	}
 
-	http.Error(w, err.Error(), http.StatusBadRequest)
+	w.WriteHeader(http.StatusBadRequest)
+	json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.CanNotCreateUserCode, common.CanNotCreateUserMsg))
 }
 
 type Claims struct {
@@ -122,7 +133,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	var payload LoginRequest
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -130,7 +142,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	validate := validator.New()
 	err = validate.Struct(payload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -144,19 +157,16 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	user, _ := userService.FindByEmail(ctx, payload.Email)
 
 	if user.Email == "" {
-		http.Error(w, "Email not exist", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.EmailNotFoundCode, common.EmailNotFoundMsg))
 		return
 	}
-
-	// if !user.Verified {
-	// 	http.Error(w, "Email not verified", http.StatusBadRequest)
-	// 	return
-	// }
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
 
 	if err != nil {
-		http.Error(w, "Password not match", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.PasswordWrongCode, common.PasswordWrongMsg))
 		return
 	}
 
@@ -177,11 +187,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	tokenString, err := token.SignedString(secretKey)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
-	json.NewEncoder(w).Encode(ResponseApi{
+	json.NewEncoder(w).Encode(common.ResponseApi{
 		Status:  http.StatusOK,
 		Message: "Login success!",
 		Metadata: map[string]any{
@@ -191,10 +202,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+	var payload VerifiedEmailRequest
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
+		return
+	}
 
-	if token == "" {
-		http.Error(w, "Token not found", http.StatusBadRequest)
+	// Validate form data
+	validate := validator.New()
+	err = validate.Struct(payload)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -205,11 +226,12 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	tokenObj, err := tokenService.FindOneByFilter(ctx, bson.M{
-		"token": token,
+		"token": payload.Token,
 	})
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
@@ -217,7 +239,8 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// check token expired
 	if tokenObj.ExpiredAt.Before(time.Now()) {
-		http.Error(w, "Token expired", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.TokenVerifyExpiredCode, common.TokenVerifyExpiredMsg))
 		return
 	}
 
@@ -231,21 +254,23 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
 	// remove token from database
 	done, err := tokenService.Remove(ctx, bson.M{
-		"token": token,
+		"token": payload.Token,
 	})
 
 	if err != nil || !done {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerErrorCode, common.InternalServerMsg))
 		return
 	}
 
-	json.NewEncoder(w).Encode(ResponseApi{
+	json.NewEncoder(w).Encode(common.ResponseApi{
 		Status:  http.StatusOK,
 		Message: "Verify email success!",
 	})
@@ -254,5 +279,5 @@ func verifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 func SetupUsersApiRoutes(router *mux.Router) {
 	router.HandleFunc("/api/register", createUserHandler).Methods("POST")
 	router.HandleFunc("/api/login", loginHandler).Methods("POST")
-	router.HandleFunc("/api/verify", verifyEmailHandler).Methods("GET")
+	router.HandleFunc("/api/verify", verifyEmailHandler).Methods("POST")
 }
