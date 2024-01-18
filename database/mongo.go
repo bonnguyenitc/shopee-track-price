@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"log"
 	"os"
 	"time"
 
@@ -25,7 +24,7 @@ func NewMongoDB(dbName string) error {
 	return nil
 }
 
-func IndexedForDocument(collection *mongo.Collection, index map[string]interface{}) error {
+func indexedForDocument(collection *mongo.Collection, index map[string]interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_, err := collection.Indexes().CreateOne(ctx, mongo.IndexModel{
@@ -35,14 +34,13 @@ func IndexedForDocument(collection *mongo.Collection, index map[string]interface
 	if err != nil {
 		return err
 	}
-	log.Println("Indexed for collection", collection.Name())
 	return nil
 }
 
 func SetupIndexed() error {
 	// setup index for users collection
 	userCollection := MongoDB.Collection(UserCollectionName)
-	err := IndexedForDocument(userCollection, map[string]interface{}{
+	err := indexedForDocument(userCollection, map[string]interface{}{
 		"email": 1,
 	})
 	if err != nil {
@@ -50,7 +48,7 @@ func SetupIndexed() error {
 	}
 	// setup index for products collection
 	productCollection := MongoDB.Collection(ProductCollectionName)
-	err = IndexedForDocument(productCollection, map[string]interface{}{
+	err = indexedForDocument(productCollection, map[string]interface{}{
 		"id_shopee": 1,
 	})
 	if err != nil {
@@ -58,7 +56,7 @@ func SetupIndexed() error {
 	}
 	// setup index for shops collection
 	shopCollection := MongoDB.Collection(ShopCollectionName)
-	err = IndexedForDocument(shopCollection, map[string]interface{}{
+	err = indexedForDocument(shopCollection, map[string]interface{}{
 		"shop_id": 1,
 	})
 	if err != nil {

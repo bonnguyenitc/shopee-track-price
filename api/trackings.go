@@ -24,6 +24,8 @@ type TrackingRequest struct {
 }
 
 func trackingHandler(w http.ResponseWriter, r *http.Request) {
+	// get user id from context
+	userID := r.Context().Value("user_id").(string)
 	// get body from request
 	var payload TrackingRequest
 	err := json.NewDecoder(r.Body).Decode(&payload)
@@ -131,8 +133,6 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
-
-	userID := r.Context().Value("user_id").(string)
 
 	userIDObj, err := primitive.ObjectIDFromHex(userID)
 

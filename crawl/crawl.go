@@ -10,8 +10,10 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
+	"github.com/bonnguyenitc/shopee-stracks/back-end-go/logs"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/utils"
 	"github.com/chromedp/chromedp"
+	"github.com/sirupsen/logrus"
 )
 
 func GetProductsByShopID(shopID string) ([]database.Product, error) {
@@ -33,12 +35,20 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 		chromedp.OuterHTML("html", &html),
 	)
 	if err != nil {
+		logs.LogWarning(logrus.Fields{
+			"shopID": shopID,
+			"data":   err.Error(),
+		}, "GetProductsByShopID run chromedp")
 		return nil, err
 	}
 
 	// parse the page HTML with goquery
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
+		logs.LogWarning(logrus.Fields{
+			"shopID": shopID,
+			"data":   err.Error(),
+		}, "GetProductsByShopID parse html")
 		return nil, err
 	}
 
@@ -52,6 +62,10 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 		err := json.Unmarshal([]byte(text), &result)
 
 		if err != nil {
+			logs.LogWarning(logrus.Fields{
+				"shopID": shopID,
+				"data":   err.Error(),
+			}, "GetProductsByShopID unmarshal json")
 			return
 		}
 
