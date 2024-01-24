@@ -35,6 +35,13 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := payload.Url
+
+	if url == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.ProductNotFoundCode, common.ProductNotFoundMessage))
+		return
+	}
+
 	// check item exist in database
 	productIdShopee, err := strconv.ParseInt(utils.GetProductIDFromUrl(url), 10, 64)
 
@@ -55,7 +62,9 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		// insert product to database
 		// get products from url
 		var shopId string = utils.GetShopIdFromString(url)
+
 		products, err := crawl.GetProductsByShopID(shopId)
+
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusInternalServerError, common.InternalServerMsg, common.InternalServerMsg))
@@ -187,8 +196,9 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		json.NewEncoder(w).Encode(common.ResponseApi{
-			Status:  http.StatusOK,
-			Message: "Tracking success!",
+			Status:   http.StatusOK,
+			Message:  common.TrackingSuccessMessage,
+			Metadata: true,
 		})
 		return
 	}
@@ -247,8 +257,9 @@ func trackingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		json.NewEncoder(w).Encode(common.ResponseApi{
-			Status:  http.StatusOK,
-			Message: common.TrackingSuccessMessage,
+			Status:   http.StatusOK,
+			Message:  common.TrackingSuccessMessage,
+			Metadata: true,
 		})
 	}
 
@@ -358,6 +369,10 @@ func unTrackingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SetupTrackingsApiRoutes(router *mux.Router) {
-	router.HandleFunc("/api/tracking", middleware.AuthMiddleware(trackingHandler)).Methods("POST")
-	router.HandleFunc("/api/un-tracking/{id}", middleware.AuthMiddleware(unTrackingHandler)).Methods("GET")
+	router.HandleFunc("/api/tracking-product", middleware.AuthMiddleware(trackingHandler, middleware.ConditionAuth{
+		NeedVerify: true,
+	})).Methods("POST")
+	router.HandleFunc("/api/un-tracking-product/{id}", middleware.AuthMiddleware(unTrackingHandler, middleware.ConditionAuth{
+		NeedVerify: true,
+	})).Methods("GET")
 }

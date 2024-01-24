@@ -112,7 +112,6 @@ func notifyPriceChangeJob() {
 	trackings, err := trackingService.FindAll(ctx, 20, 1)
 
 	if err != nil {
-		log.Println(err)
 		return
 	}
 

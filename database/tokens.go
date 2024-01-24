@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	VerifyToken         = "verify_token"
+	VerifyEmail         = "verify_email"
+	ResetPassword       = "reset_password"
 	TokenCollectionName = "tokens"
 )
 

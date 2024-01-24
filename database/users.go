@@ -95,7 +95,7 @@ func (r *MongoUserRepository) FindByEmail(ctx context.Context, email string) (Us
 	var user User
 	err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
-		return user, err
+		return User{}, err
 	}
 	return user, nil
 }

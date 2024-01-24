@@ -7,16 +7,22 @@ import (
 
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/api"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
-	"github.com/bonnguyenitc/shopee-stracks/back-end-go/jobs"
-	"github.com/bonnguyenitc/shopee-stracks/back-end-go/logs"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	logs.LogSetup()
-	err := godotenv.Load()
+	file, err := os.OpenFile("storage/info.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	logrus.SetOutput(file)
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+	// load env
+	err = godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -25,9 +31,6 @@ func main() {
 	// setup database
 	err = database.NewMongoDB(dbName)
 	if err != nil {
-		logs.LogWarning(logrus.Fields{
-			"data": err.Error(),
-		}, "main run database.NewMongoDB")
 		log.Fatal(err)
 	}
 	// setup index
@@ -36,6 +39,9 @@ func main() {
 	router := mux.NewRouter()
 	// setup api
 	api.SetupRoutes(router)
-	jobs.RunCronJobs()
-	log.Fatal(http.ListenAndServe(":8000", router))
+	// setup CORS
+	handler := cors.Default().Handler(router)
+	// jobs.RunCronJobs()
+	log.Fatal(http.ListenAndServe(":8000", handler))
+
 }

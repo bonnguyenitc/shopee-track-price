@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -19,8 +20,12 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type ConditionAuth struct {
+	NeedVerify bool
+}
+
 // for use on route (using a http.HandlerFunc)
-func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
+func AuthMiddleware(next http.HandlerFunc, condition ConditionAuth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		bearToken := strings.ReplaceAll(r.Header.Get("Authorization"), "Bearer ", "")
 
@@ -59,7 +64,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		if !user.Verified {
+		if !user.Verified && condition.NeedVerify {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(common.ReturnErrorApi(http.StatusBadRequest, common.EmailNotVerifiedCode, common.EmailNotVerifiedMsg))
 			return
@@ -70,4 +75,11 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		next(w, r.WithContext(ctx))
 	}
+}
+
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Method: %s, URL: %s, RemoteAddr: %s\n", r.Method, r.URL.Path, r.RemoteAddr)
+		next.ServeHTTP(w, r)
+	})
 }

@@ -13,13 +13,26 @@ import (
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/logs"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/utils"
 	"github.com/chromedp/chromedp"
+	fakeUseragent "github.com/eddycjy/fake-useragent"
 	"github.com/sirupsen/logrus"
 )
 
 func GetProductsByShopID(shopID string) ([]database.Product, error) {
 	var url = fmt.Sprintf("https://shopee.vn/api/v4/recommend/recommend?bundle=shop_page_product_tab_main&limit=999&offset=0&section=shop_page_product_tab_main_sec&shopid=%s", shopID)
 
+	random := fakeUseragent.Random()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.DisableGPU,
+		chromedp.NoDefaultBrowserCheck,
+		chromedp.ProxyServer("192.163.253.191:6339"),
+		chromedp.Flag("ignore-certificate-errors", true),
+		chromedp.UserAgent(random),
+	)
+	ctx, cancel = chromedp.NewExecAllocator(ctx, opts...)
 	defer cancel()
 
 	allocCtx, cancel := chromedp.NewRemoteAllocator(ctx, "http://headless-shell:9222")
@@ -54,9 +67,9 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 
 	products := []database.Product{}
 
-	// find and print all links
 	doc.Find("pre").Each(func(i int, s *goquery.Selection) {
 		text := s.Text()
+
 		var result map[string]interface{}
 
 		err := json.Unmarshal([]byte(text), &result)
@@ -72,6 +85,10 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 		error := result["error"].(float64)
 
 		if error != 0 {
+			logs.LogWarning(logrus.Fields{
+				"shopID": shopID,
+				"data":   error,
+			}, "GetProductsByShopID is blocked")
 			return
 		}
 
