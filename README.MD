@@ -14,6 +14,9 @@
 
 ```bash
 // Build and run
+
+First, you need to create a .env file in the root folder of the project and copy all content from .env.example file to .env file.
+
 docker compose up -d
 
 // Some command docker for new guy
