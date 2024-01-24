@@ -10,6 +10,10 @@
 
 ##### I will continue this project when I find a way to scrape data from Shopee website.
 
+#### What is the technology stack?
+
+##### Golang, Docker, MongoDB, Chomedp, Mux,...
+
 ### How to run this project?
 
 ```bash
