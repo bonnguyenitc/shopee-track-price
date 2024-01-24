@@ -28,6 +28,7 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.DisableGPU,
 		chromedp.NoDefaultBrowserCheck,
+		// Remove this if you have not proxy server
 		chromedp.ProxyServer("192.163.253.191:6339"),
 		chromedp.Flag("ignore-certificate-errors", true),
 		chromedp.UserAgent(random),
