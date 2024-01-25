@@ -12,6 +12,8 @@ import (
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/database"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/logs"
 	"github.com/bonnguyenitc/shopee-stracks/back-end-go/utils"
+	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	fakeUseragent "github.com/eddycjy/fake-useragent"
 	"github.com/sirupsen/logrus"
@@ -28,8 +30,6 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.DisableGPU,
 		chromedp.NoDefaultBrowserCheck,
-		// Remove this if you have not proxy server
-		chromedp.ProxyServer("192.163.253.191:6339"),
 		chromedp.Flag("ignore-certificate-errors", true),
 		chromedp.UserAgent(random),
 	)
@@ -129,4 +129,153 @@ func GetProductsByShopID(shopID string) ([]database.Product, error) {
 	})
 
 	return products, nil
+}
+
+// ScrapeProductDetail scrape product detail
+func ScrapeProductDetail() (database.Product, error) {
+	var url = ""
+
+	productId := utils.GetProductIDFromUrl(url)
+
+	random := fakeUseragent.Random()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.DisableGPU,
+		chromedp.NoDefaultBrowserCheck,
+		// Remove this if you have not proxy server
+		// chromedp.ProxyServer("210.211.113.35:80"),
+		chromedp.Flag("ignore-certificate-errors", true),
+		chromedp.Flag("headless", false),
+		chromedp.Flag("start-fullscreen", false),
+		chromedp.Flag("enable-automation", false),
+		chromedp.Flag("disable-extensions", false),
+		chromedp.UserAgent(random),
+		chromedp.NoSandbox,
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("shm-size", "4GB"),
+	)
+	ctx, cancel = chromedp.NewExecAllocator(ctx, opts...)
+	defer cancel()
+
+	allocCtx, cancel := chromedp.NewRemoteAllocator(ctx, "http://headless-shell:9222")
+	defer cancel()
+
+	ctx, cancel = chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
+	defer cancel()
+
+	defer chromedp.Cancel(ctx)
+
+	// navigate to a page, retrieve the page source
+	// var nodes []*cdp.Node
+	task := chromedp.Tasks{
+		chromedp.Navigate("https://shopee.vn/mall"),
+		chromedp.Navigate(url),
+		chromedp.WaitReady("#main", chromedp.ByID),
+		// chromedp.Nodes(".G27FPf", &nodes, chromedp.AtLeast(1), chromedp.ByQueryAll),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			node, err := dom.GetDocument().Do(ctx)
+			if err != nil {
+				return err
+			}
+			res, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+			if err != nil {
+				return err
+			}
+			doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+			if err != nil {
+				return err
+			}
+
+			productView := doc.Find(".product-briefing").First()
+
+			// get name of product
+			nameProductNode := productView.Find("section span").First()
+			name := nameProductNode.Text()
+			log.Println("name of product:", name)
+
+			// get like of product
+			likeProductNode := productView.Find(".rhG6k7").Last()
+			like := likeProductNode.Text()
+			log.Println("like of product:", like)
+
+			// get rating of product
+			ratingProductNode := productView.Find(".F9RHbS").First()
+			rating := ratingProductNode.Text()
+			log.Println("rating of product:", rating)
+
+			// get price of product
+			priceProductNode := productView.Find(".G27FPf").First()
+			price := priceProductNode.Text()
+			log.Println("price of product:", price)
+
+			// get old price of product
+			oldPriceProductNode := productView.Find(".qg2n76").First()
+			oldPrice := oldPriceProductNode.Text()
+			log.Println("old price of product:", oldPrice)
+
+			// get discount of product
+			discountProductNode := productView.Find(".o_z7q9").First()
+			discount := discountProductNode.Text()
+			log.Println("discount of product:", discount)
+
+			// get sold of product
+			soldProductNode := productView.Find(".AcmPRb").First()
+			sold := soldProductNode.Text()
+			log.Println("sold of product:", sold)
+
+			// get stock of product
+			stockProductNode := productView.Find(".OaFP0p .flex div").Last()
+			stock := stockProductNode.Text()
+			log.Println("stock of product:", stock)
+
+			// get review of product
+			reviewProductNode := productView.Find(".F9RHbS").First()
+			review := reviewProductNode.Text()
+			log.Println("review of product:", review)
+
+			// shop info
+			shopInfo := doc.Find(".page-product__shop").First()
+
+			// get shop name
+			shopNameNode := shopInfo.Find(".fV3TIn").First()
+			shopName := shopNameNode.Text()
+			log.Println("shop name:", shopName)
+
+			// get shop image
+			shopImageNode := shopInfo.Find(".Qm507c").First()
+			shopImage, _ := shopImageNode.Attr("src")
+			log.Println("shop image:", shopImage)
+
+			// get flash sale
+			flashSaleNode := doc.Find(".shopee-countdown-timer").First()
+			flashSale, _ := flashSaleNode.Attr("aria-label")
+			log.Println("flash sale:", flashSale)
+
+			return nil
+		}),
+	}
+
+	if err := chromedp.Run(ctx,
+		network.ClearBrowserCookies(),
+	); err != nil {
+		log.Fatal(err)
+	}
+
+	err := chromedp.Run(ctx, task)
+	if err != nil {
+		logs.LogWarning(logrus.Fields{
+			"shopID": productId,
+			"data":   err.Error(),
+		}, "ScrapeProductDetail run chromedp")
+		return database.Product{}, err
+	}
+
+	product := database.Product{}
+
+	log.Println("End scrape product detail")
+
+	return product, nil
 }
